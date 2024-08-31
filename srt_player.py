@@ -98,6 +98,7 @@ def play_stream(stdscr, streams, index):
                     if key == 27:  # ESC key
                         ffplay_process.terminate()
                         ffplay_process.wait()
+                        stdscr.nodelay(False)  # Volver a modo bloqueante
                         return  # Volver al menú principal
 
                     if ffplay_process.poll() is not None:
@@ -111,9 +112,8 @@ def play_stream(stdscr, streams, index):
             except KeyboardInterrupt:
                 ffplay_process.terminate()
                 ffplay_process.wait()
+                stdscr.nodelay(False)  # Volver a modo bloqueante
                 return  # Volver al menú principal
-
-        stdscr.nodelay(False)  # Restablecer a captura de teclado bloqueante
 
 def main(stdscr):
     curses.curs_set(0)
