@@ -87,29 +87,34 @@ def play_stream(stdscr, streams, index):
         stdscr.addstr(0, 0, f"INTENTANDO REPRODUCIR: {streams[index]['name'].upper()}")
         stdscr.refresh()
 
+        stdscr.nodelay(True)  # Permitir captura no bloqueante de teclado
+
         while True:
             ffplay_process = subprocess.Popen(["ffplay", "-fflags", "nobuffer", "-autoexit", "-i", SRT_URL])
 
             try:
                 while True:
-                    ffplay_process.wait()  # Esperar a que termine ffplay
-                    break  # Si sale del bucle, reiniciar ffplay
+                    # Revisa si hay una tecla presionada
+                    key = stdscr.getch()
+                    if key == 27:  # ESC key
+                        ffplay_process.terminate()
+                        ffplay_process.wait()
+                        return  # Volver al menú principal
+
+                    # Verifica si ffplay ha terminado
+                    if ffplay_process.poll() is not None:
+                        break  # Si ffplay termina, salir del bucle y reiniciar
+
+                # Mensaje de reconexión
+                stdscr.clear()
+                stdscr.addstr(0, 0, "CONEXIÓN PERDIDA. RECONEXIÓN EN 5 SEGUNDOS...")
+                stdscr.refresh()
+                time.sleep(5)
+
             except KeyboardInterrupt:
                 ffplay_process.terminate()
                 ffplay_process.wait()
                 return  # Volver al menú principal
-            except Exception as e:
-                # Captura de ESC
-                key = stdscr.getch()
-                if key == 27:  # ESC key
-                    ffplay_process.terminate()
-                    ffplay_process.wait()
-                    return  # Volver al menú principal
-
-            stdscr.clear()
-            stdscr.addstr(0, 0, "CONEXIÓN PERDIDA. RECONEXIÓN EN 5 SEGUNDOS...")
-            stdscr.refresh()
-            time.sleep(5)
 
 def main(stdscr):
     curses.curs_set(0)
