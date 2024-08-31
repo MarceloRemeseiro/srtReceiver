@@ -2,6 +2,7 @@ import curses
 import json
 import os
 import subprocess
+import time
 
 SRT_FILE = "srt_streams.json"
 
@@ -92,16 +93,29 @@ def play_stream(stdscr, streams, index):
         stdscr.addstr(0, 0, f"INTENTANDO REPRODUCIR: {streams[index]['name'].upper()}")
         stdscr.refresh()
 
-        # Ejecuta ffplay en un subproceso
-        ffplay_process = subprocess.Popen(["ffplay", "-fflags", "nobuffer", "-i", SRT_URL])
-
-        # Espera y captura ESC
         while True:
-            key = stdscr.getch()
-            if key == 27:  # ESC key
-                ffplay_process.terminate()
-                ffplay_process.wait()
-                break
+            # Ejecuta ffplay en un subproceso
+            ffplay_process = subprocess.Popen(["ffplay", "-fflags", "nobuffer", "-i", SRT_URL], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            # Monitoriza la salida de ffplay
+            while True:
+                output = ffplay_process.stderr.readline()
+                if output == b'' and ffplay_process.poll() is not None:
+                    break
+                if b"Input/output error" in output:
+                    ffplay_process.terminate()
+                    ffplay_process.wait()
+                    stdscr.clear()
+                    stdscr.addstr(0, 0, "CONEXIÓN PERDIDA. RECONEXIÓN EN 5 SEGUNDOS...")
+                    stdscr.refresh()
+                    time.sleep(5)
+                    break  # Sal del bucle interno y reinicia ffplay
+
+                key = stdscr.getch()
+                if key == 27:  # ESC key
+                    ffplay_process.terminate()
+                    ffplay_process.wait()
+                    return
 
 # Función principal que maneja el menú
 def main(stdscr):
