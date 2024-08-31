@@ -3,23 +3,26 @@ import json
 import os
 import subprocess
 import time
-import select
 
 SRT_FILE = "srt_streams.json"
 
+# Inicializa el archivo JSON si no existe
 def initialize_json():
     if not os.path.exists(SRT_FILE):
         with open(SRT_FILE, 'w') as f:
             json.dump([], f)
 
+# Carga los streams desde el archivo JSON
 def load_streams():
     with open(SRT_FILE, 'r') as f:
         return json.load(f)
 
+# Guarda los streams en el archivo JSON
 def save_streams(streams):
     with open(SRT_FILE, 'w') as f:
         json.dump(streams, f)
 
+# Añade un nuevo stream al JSON
 def add_new_stream(stdscr, streams):
     curses.echo()
     stdscr.clear()
@@ -33,6 +36,7 @@ def add_new_stream(stdscr, streams):
     stdscr.refresh()
     stdscr.getch()
 
+# Borra un stream del JSON
 def delete_stream(stdscr, streams):
     if not streams:
         stdscr.addstr(5, 0, "NO HAY STREAMS SRT PARA BORRAR.")
@@ -80,6 +84,7 @@ def delete_stream(stdscr, streams):
                     stdscr.getch()
                 return  # Volver al menú principal
 
+# Reproduce un stream con reconexión automática usando ffplay y captura ESC
 def play_stream(stdscr, streams, index):
     if 0 <= index < len(streams):
         streamid = streams[index]["streamid"]
@@ -89,34 +94,30 @@ def play_stream(stdscr, streams, index):
         stdscr.refresh()
 
         while True:
+            # Ejecuta ffplay en un subproceso
             ffplay_process = subprocess.Popen(["ffplay", "-fflags", "nobuffer", "-i", SRT_URL], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            ffplay_fd = ffplay_process.stderr.fileno()
-            poller = select.poll()
-            poller.register(ffplay_fd, select.POLLIN)
 
+            # Monitoriza la salida de ffplay
             while True:
-                events = poller.poll(100)
-                if events:
-                    output = ffplay_process.stderr.readline()
-                    if b"Input/output error" in output:
-                        ffplay_process.terminate()
-                        ffplay_process.wait()
-                        stdscr.clear()
-                        stdscr.addstr(0, 0, "CONEXIÓN PERDIDA. RECONEXIÓN EN 5 SEGUNDOS...")
-                        stdscr.refresh()
-                        time.sleep(5)
-                        break  # Reinicia ffplay después de 5 segundos
-                else:
-                    key = stdscr.getch()
-                    if key == 27:  # ESC key
-                        ffplay_process.terminate()
-                        ffplay_process.wait()
-                        return
-
-                # Si ffplay ha terminado de forma inesperada
-                if ffplay_process.poll() is not None:
+                output = ffplay_process.stderr.readline()
+                if output == b'' and ffplay_process.poll() is not None:
                     break
+                if b"Input/output error" in output:
+                    ffplay_process.terminate()
+                    ffplay_process.wait()
+                    stdscr.clear()
+                    stdscr.addstr(0, 0, "CONEXIÓN PERDIDA. RECONEXIÓN EN 5 SEGUNDOS...")
+                    stdscr.refresh()
+                    time.sleep(5)
+                    break  # Sal del bucle interno y reinicia ffplay
 
+                key = stdscr.getch()
+                if key == 27:  # ESC key
+                    ffplay_process.terminate()
+                    ffplay_process.wait()
+                    return
+
+# Función principal que maneja el menú
 def main(stdscr):
     curses.curs_set(0)  # Ocultar el cursor
 
