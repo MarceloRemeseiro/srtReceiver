@@ -98,6 +98,13 @@ def play_stream(stdscr, streams, index):
                 ffplay_process.terminate()
                 ffplay_process.wait()
                 return  # Volver al menú principal
+            except Exception as e:
+                # Captura de ESC
+                key = stdscr.getch()
+                if key == 27:  # ESC key
+                    ffplay_process.terminate()
+                    ffplay_process.wait()
+                    return  # Volver al menú principal
 
             stdscr.clear()
             stdscr.addstr(0, 0, "CONEXIÓN PERDIDA. RECONEXIÓN EN 5 SEGUNDOS...")
