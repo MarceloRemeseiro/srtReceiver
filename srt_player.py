@@ -4,25 +4,21 @@ import os
 import subprocess
 import time
 
-SRT_FILE = "srt_streams.json"
+SRT_FILE = "/home/srt1/srtReceiver/srt_streams.json"
 
-# Inicializa el archivo JSON si no existe
 def initialize_json():
     if not os.path.exists(SRT_FILE):
         with open(SRT_FILE, 'w') as f:
             json.dump([], f)
 
-# Carga los streams desde el archivo JSON
 def load_streams():
     with open(SRT_FILE, 'r') as f:
         return json.load(f)
 
-# Guarda los streams en el archivo JSON
 def save_streams(streams):
     with open(SRT_FILE, 'w') as f:
         json.dump(streams, f)
 
-# Añade un nuevo stream al JSON
 def add_new_stream(stdscr, streams):
     curses.echo()
     stdscr.clear()
@@ -36,7 +32,6 @@ def add_new_stream(stdscr, streams):
     stdscr.refresh()
     stdscr.getch()
 
-# Borra un stream del JSON
 def delete_stream(stdscr, streams):
     if not streams:
         stdscr.addstr(5, 0, "NO HAY STREAMS SRT PARA BORRAR.")
@@ -70,7 +65,7 @@ def delete_stream(stdscr, streams):
             current_row += 1
         elif key == curses.KEY_ENTER or key in [10, 13]:
             if current_row == len(streams):
-                return  # Volver al menú principal
+                return
             else:
                 stdscr.clear()
                 stdscr.addstr(0, 0, f"¿SEGURO QUE QUIERES BORRAR '{streams[current_row]['name'].upper()}'? (S/N)")
@@ -82,9 +77,8 @@ def delete_stream(stdscr, streams):
                     stdscr.addstr(2, 0, "STREAM SRT BORRADO.")
                     stdscr.refresh()
                     stdscr.getch()
-                return  # Volver al menú principal
+                return
 
-# Reproduce un stream con reconexión automática usando ffplay
 def play_stream(stdscr, streams, index):
     if 0 <= index < len(streams):
         streamid = streams[index]["streamid"]
@@ -94,27 +88,29 @@ def play_stream(stdscr, streams, index):
         stdscr.refresh()
 
         while True:
-            # Ejecuta ffplay en un subproceso
-            ffplay_process = subprocess.Popen(["ffplay", "-fflags", "nobuffer", "-autoexit", SRT_URL])
+            ffplay_process = subprocess.Popen(["ffplay", "-fflags", "nobuffer", "-autoexit", "-i", SRT_URL], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-            # Espera a que termine ffplay o reciba la tecla ESC
-            while ffplay_process.poll() is None:
+            while True:
+                output = ffplay_process.stderr.readline()
+                if output == b'' and ffplay_process.poll() is not None:
+                    break
+                if b"Input/output error" in output:
+                    ffplay_process.terminate()
+                    ffplay_process.wait()
+                    stdscr.clear()
+                    stdscr.addstr(0, 0, "CONEXIÓN PERDIDA. RECONEXIÓN EN 5 SEGUNDOS...")
+                    stdscr.refresh()
+                    time.sleep(5)
+                    break
+
                 key = stdscr.getch()
-                if key == 27:  # ESC key
+                if key == 27:
                     ffplay_process.terminate()
                     ffplay_process.wait()
                     return
 
-            # Si el proceso termina, espera y reinicia la reproducción
-            stdscr.clear()
-            stdscr.addstr(0, 0, "LA CONEXIÓN SE PERDIÓ. RECONEXIÓN EN 5 SEGUNDOS...")
-            stdscr.refresh()
-            time.sleep(5)
-
-# Función principal que maneja el menú
 def main(stdscr):
-    curses.curs_set(0)  # Ocultar el cursor
-
+    curses.curs_set(0)
     streams = load_streams()
     current_row = 0
 
