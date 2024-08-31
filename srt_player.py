@@ -98,10 +98,10 @@ def play_stream(stdscr, streams, index):
             # Registro de inicio de reproducción
             with open(LOG_FILE, 'a') as log:
                 log.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - Intentando reproducir: {streams[index]['name'].upper()} con StreamID: {streamid}\n")
-            
+
             # Ejecuta ffplay en un subproceso
             ffplay_process = subprocess.Popen(
-                ["ffplay", "-fflags", "nobuffer", "-i", SRT_URL],
+                ["ffplay", "-fflags", "nobuffer", "-autoexit", "-i", SRT_URL],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
             )
 
@@ -112,12 +112,14 @@ def play_stream(stdscr, streams, index):
                         ffplay_process.terminate()
                         ffplay_process.wait()
                         return
-                # Si el proceso terminó, esperamos 5 segundos y reiniciamos
+
+                # Si el proceso terminó inesperadamente, reinicia el proceso después de 5 segundos
                 stdscr.addstr(1, 0, "CONEXIÓN PERDIDA. RECONEXIÓN EN 5 SEGUNDOS...")
                 stdscr.refresh()
                 with open(LOG_FILE, 'a') as log:
                     log.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - Conexión perdida. Intentando reconectar en 5 segundos...\n")
                 time.sleep(5)
+
             except Exception as e:
                 stdscr.addstr(2, 0, f"ERROR: {str(e)}")
                 stdscr.refresh()
