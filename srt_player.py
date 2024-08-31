@@ -84,7 +84,7 @@ def delete_stream(stdscr, streams):
                     stdscr.getch()
                 return  # Volver al menú principal
 
-# Reproduce un stream con reconexión automática usando ffplay y captura ESC
+# Reproduce un stream con reconexión automática usando ffplay
 def play_stream(stdscr, streams, index):
     if 0 <= index < len(streams):
         streamid = streams[index]["streamid"]
@@ -95,27 +95,21 @@ def play_stream(stdscr, streams, index):
 
         while True:
             # Ejecuta ffplay en un subproceso
-            ffplay_process = subprocess.Popen(["ffplay", "-fflags", "nobuffer", "-i", SRT_URL], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            ffplay_process = subprocess.Popen(["ffplay", "-fflags", "nobuffer", "-autoexit", SRT_URL])
 
-            # Monitoriza la salida de ffplay
-            while True:
-                output = ffplay_process.stderr.readline()
-                if output == b'' and ffplay_process.poll() is not None:
-                    break
-                if b"Input/output error" in output:
-                    ffplay_process.terminate()
-                    ffplay_process.wait()
-                    stdscr.clear()
-                    stdscr.addstr(0, 0, "CONEXIÓN PERDIDA. RECONEXIÓN EN 5 SEGUNDOS...")
-                    stdscr.refresh()
-                    time.sleep(5)
-                    break  # Sal del bucle interno y reinicia ffplay
-
+            # Espera a que termine ffplay o reciba la tecla ESC
+            while ffplay_process.poll() is None:
                 key = stdscr.getch()
                 if key == 27:  # ESC key
                     ffplay_process.terminate()
                     ffplay_process.wait()
                     return
+
+            # Si el proceso termina, espera y reinicia la reproducción
+            stdscr.clear()
+            stdscr.addstr(0, 0, "LA CONEXIÓN SE PERDIÓ. RECONEXIÓN EN 5 SEGUNDOS...")
+            stdscr.refresh()
+            time.sleep(5)
 
 # Función principal que maneja el menú
 def main(stdscr):
