@@ -97,7 +97,7 @@ def play_stream(stdscr, streams, index):
             # Ejecuta ffplay en un subproceso
             ffplay_process = subprocess.Popen(["ffplay", "-fflags", "nobuffer", "-i", SRT_URL], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-            # Espera a que termine el proceso de ffplay o que se presione ESC
+            # Monitoriza la salida de ffplay
             while True:
                 key = stdscr.getch()
                 if key == 27:  # ESC key
