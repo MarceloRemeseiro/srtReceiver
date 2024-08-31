@@ -97,23 +97,25 @@ def play_stream(stdscr, streams, index):
             # Ejecuta ffplay en un subproceso
             ffplay_process = subprocess.Popen(["ffplay", "-fflags", "nobuffer", "-i", SRT_URL], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-            # Espera a que termine el proceso de ffplay o que se presione ESC
+            # Monitoriza la salida de ffplay
             while True:
+                output = ffplay_process.stderr.readline()
+                if output == b'' and ffplay_process.poll() is not None:
+                    break
+                if b"Input/output error" in output:
+                    ffplay_process.terminate()
+                    ffplay_process.wait()
+                    stdscr.clear()
+                    stdscr.addstr(0, 0, "CONEXIÓN PERDIDA. RECONEXIÓN EN 5 SEGUNDOS...")
+                    stdscr.refresh()
+                    time.sleep(5)
+                    break  # Sal del bucle interno y reinicia ffplay
+
                 key = stdscr.getch()
                 if key == 27:  # ESC key
                     ffplay_process.terminate()
                     ffplay_process.wait()
                     return
-
-                # Chequea si el proceso ffplay ha terminado por cualquier razón
-                if ffplay_process.poll() is not None:
-                    break
-
-            # Si el proceso termina de forma inesperada, intenta reconectar
-            stdscr.clear()
-            stdscr.addstr(0, 0, "CONEXIÓN PERDIDA. RECONEXIÓN EN 5 SEGUNDOS...")
-            stdscr.refresh()
-            time.sleep(5)
 
 # Función principal que maneja el menú
 def main(stdscr):
