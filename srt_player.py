@@ -95,14 +95,17 @@ def play_stream(stdscr, streams, index):
 
         while True:
             # Ejecuta ffplay en un subproceso
-            ffplay_process = subprocess.Popen(["ffplay", "-fflags", "nobuffer", "-i", SRT_URL], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            ffplay_process = subprocess.Popen(
+                ["ffplay", "-fflags", "nobuffer", "-i", SRT_URL],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
 
             # Monitoriza la salida de ffplay
             while True:
                 output = ffplay_process.stderr.readline()
                 if output == b'' and ffplay_process.poll() is not None:
                     break
-                if b"Input/output error" in output:
+                if b"Input/output error" in output or b"Server returned 404 Not Found" in output:
                     ffplay_process.terminate()
                     ffplay_process.wait()
                     stdscr.clear()
