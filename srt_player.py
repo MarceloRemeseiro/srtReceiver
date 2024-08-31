@@ -85,7 +85,7 @@ def delete_stream(stdscr, streams):
                     stdscr.getch()
                 return  # Volver al menú principal
 
-# Reproduce un stream con reconexión automática usando ffplay
+# Reproduce un stream con reconexión automática usando ffmpeg
 def play_stream(stdscr, streams, index):
     if 0 <= index < len(streams):
         streamid = streams[index]["streamid"]
@@ -99,18 +99,18 @@ def play_stream(stdscr, streams, index):
             with open(LOG_FILE, 'a') as log:
                 log.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - Intentando reproducir: {streams[index]['name'].upper()} con StreamID: {streamid}\n")
 
-            # Ejecuta ffplay en un subproceso
-            ffplay_process = subprocess.Popen(
-                ["ffplay", "-fflags", "nobuffer", "-autoexit", "-i", SRT_URL],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            # Ejecuta ffmpeg en un subproceso
+            ffmpeg_process = subprocess.Popen(
+                ["ffmpeg", "-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5",
+                 "-i", SRT_URL, "-f", "v4l2", "/dev/video0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
             )
 
             try:
-                while ffplay_process.poll() is None:
+                while ffmpeg_process.poll() is None:
                     key = stdscr.getch()
                     if key == 27:  # ESC key
-                        ffplay_process.terminate()
-                        ffplay_process.wait()
+                        ffmpeg_process.terminate()
+                        ffmpeg_process.wait()
                         return
 
                 # Si el proceso terminó inesperadamente, reinicia el proceso después de 5 segundos
@@ -123,8 +123,8 @@ def play_stream(stdscr, streams, index):
             except Exception as e:
                 stdscr.addstr(2, 0, f"ERROR: {str(e)}")
                 stdscr.refresh()
-                ffplay_process.terminate()
-                ffplay_process.wait()
+                ffmpeg_process.terminate()
+                ffmpeg_process.wait()
                 return
 
 # Función principal que maneja el menú
