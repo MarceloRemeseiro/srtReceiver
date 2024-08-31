@@ -88,26 +88,21 @@ def play_stream(stdscr, streams, index):
         stdscr.refresh()
 
         while True:
-            ffplay_process = subprocess.Popen(["ffplay", "-fflags", "nobuffer", "-autoexit", "-i", SRT_URL], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            ffplay_process = subprocess.Popen(["ffplay", "-fflags", "nobuffer", "-autoexit", "-i", SRT_URL])
 
-            while True:
-                output = ffplay_process.stderr.readline()
-                if output == b'' and ffplay_process.poll() is not None:
-                    break
-                if b"Input/output error" in output:
-                    ffplay_process.terminate()
-                    ffplay_process.wait()
-                    stdscr.clear()
-                    stdscr.addstr(0, 0, "CONEXIÓN PERDIDA. RECONEXIÓN EN 5 SEGUNDOS...")
-                    stdscr.refresh()
-                    time.sleep(5)
-                    break
+            try:
+                while True:
+                    ffplay_process.wait()  # Esperar a que termine ffplay
+                    break  # Si sale del bucle, reiniciar ffplay
+            except KeyboardInterrupt:
+                ffplay_process.terminate()
+                ffplay_process.wait()
+                return  # Volver al menú principal
 
-                key = stdscr.getch()
-                if key == 27:
-                    ffplay_process.terminate()
-                    ffplay_process.wait()
-                    return
+            stdscr.clear()
+            stdscr.addstr(0, 0, "CONEXIÓN PERDIDA. RECONEXIÓN EN 5 SEGUNDOS...")
+            stdscr.refresh()
+            time.sleep(5)
 
 def main(stdscr):
     curses.curs_set(0)
